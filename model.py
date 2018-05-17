@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from nltk import tokenize
 from sklearn.model_selection import train_test_split
 from keras.models import Model
 from keras.layers import Dense, Embedding, Input
@@ -12,9 +13,11 @@ maxlen = 100
 
 #load data
 trainx = pd.read_csv("data/train.csv")
-trainx = trainx.sample(frac=0.3)
+trainx = trainx.sample(frac=0.1)
 train, test = train_test_split(trainx, test_size=0.3)
 train = train.sample(frac=1)
+COMMENTS = ["I hate you!", "I like math.", "Tricky sentences are really funny.", "Why are you like this? I only wanted to be friends. That doesn't mean you can do this to me. You're a piece of trash! I hope you die!", "I really want to go to sleep."]
+
 
 #clean data
 list_sentences_train = train["comment_text"].fillna("").values
@@ -23,24 +26,17 @@ y_train = train[list_classes].values
 list_sentences_test = test["comment_text"].fillna("").values
 y_test = test[list_classes].values
 
-#find class counts
-class_counts = [0]*6
-for i in range(len(y_train)):
-    for j in range(6):
-        class_counts[j] += y_train[i][j]
-for i in range(len(y_test)):
-    for j in range(6):
-        class_counts[j] += y_test[i][j]
-print("class_counts:", class_counts)
-#[15294, 1595, 8449, 478, 7877, 1405]
 
 #tokenize + word vector
 tokenizer = text.Tokenizer(num_words=max_features)
 tokenizer.fit_on_texts(list(list_sentences_train))
 list_tokenized_train = tokenizer.texts_to_sequences(list_sentences_train)
 list_tokenized_test = tokenizer.texts_to_sequences(list_sentences_test)
+tokenized_comments = tokenizer.texts_to_sequences(COMMENTS)
+
 X_train = sequence.pad_sequences(list_tokenized_train, maxlen=maxlen)
 X_test = sequence.pad_sequences(list_tokenized_test, maxlen=maxlen)
+comments = sequence.pad_sequences(tokenized_comments, maxlen=maxlen)
 
 #create model
 def get_model():
@@ -69,3 +65,11 @@ history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=e
 # Final evaluation of the model
 scores = model.evaluate(X_test, y_test, verbose=0)
 print("Accuracy: {}%".format(round(scores[1]*100, 2)))
+
+prediction = model.predict(comments)
+for i in range(len(COMMENTS)):
+    print(COMMENTS[i])
+    print(prediction[i])
+    for j in range(6):
+        if prediction[i][j] >= 0.5:
+            print(list_classes[j])
